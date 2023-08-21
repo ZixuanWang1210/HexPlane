@@ -8,6 +8,24 @@ class TVLoss(nn.Module):
         self.TVLoss_weight_dim1 = TVLoss_weight_dim1
         self.TVLoss_weight_dim2 = TVLoss_weight_dim2
 
+    """
+    1. **获取张量尺寸**：
+        - `batch_size`：批量大小，即输入张量`x`的第一个维度。
+        - `h_x` 和 `w_x`：分别是输入张量`x`的高度和宽度（通常对应于图像或特征图）。
+
+    2. **计算有效元素数量**：
+        - `count_h`：高度方向上差值的总数量。
+        - `count_w`：宽度方向上差值的总数量。
+
+    3. **计算高度和宽度方向上的TV Loss**：
+        - `h_tv`：计算输入张量`x`沿高度方向（第3个维度）的总变分损失。具体地，它计算相邻像素间的差的平方和，然后乘以一个权重`self.TVLoss_weight_dim1`。
+        - `w_tv`：同样地，计算输入张量`x`沿宽度方向（第4个维度）的总变分损失。同样使用一个权重`self.TVLoss_weight_dim2`。
+
+    4. **平均并返回结果**：
+        - 先对`h_tv`和`w_tv`进行归一化，除以它们各自的有效元素数量（`count_h`和`count_w`）。
+        - 然后将两者相加，并除以`batch_size`，以得到批量中每个样本的平均总变分损失。
+        - 最后乘以2（可能是为了调整损失的规模，但这取决于具体的应用场景）。
+    """
     def forward(self, x):
         batch_size = x.size()[0]
         h_x = x.size()[2]

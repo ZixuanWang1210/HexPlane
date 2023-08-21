@@ -21,7 +21,7 @@ def visualize_depth_numpy(depth, minmax=None, cmap=cv2.COLORMAP_JET):
     x_ = cv2.applyColorMap(x, cmap)
     return x_, [mi, ma]
 
-
+# 决定每个维度上有多少个体素：bounding box/size
 def N_to_reso(n_voxels, bbox, adjusted_grid=True):
     if adjusted_grid:
         xyz_min, xyz_max = bbox

@@ -89,6 +89,7 @@ class HexPlane_Base(torch.nn.Module):
         device: torch.device,
         time_grid: int,
         near_far: List[float],
+        # 默认8个组件
         density_n_comp: Union[int, List[int]] = 8,
         app_n_comp: Union[int, List[int]] = 24,
         density_dim: int = 1,
@@ -328,6 +329,7 @@ class HexPlane_Base(torch.nn.Module):
         if is_train:
             interpx += torch.rand_like(interpx).to(rays_o) * ((far - near) / N_samples)
 
+        # 使用线性方程按照等距采样光线上的点
         rays_pts = rays_o[..., None, :] + rays_d[..., None, :] * interpx[..., None]
         mask_outbbox = ((self.aabb[0] > rays_pts) | (rays_pts > self.aabb[1])).any(
             dim=-1
@@ -435,6 +437,13 @@ class HexPlane_Base(torch.nn.Module):
             is_train: bool, whether in training mode.
             ndc_ray: bool, whether to use normalized device coordinates.
             N_samples: int, number of samples along each ray.
+            
+            rays_chunk: 射线的起点和方向，(B,6)
+            frame_time: 每个射线的时间帧，(B,1)
+            white_bg: 是否使用白色背景
+            is_train: 是否在训练模式
+            ndc_ray: 是否使用归一化设备坐标
+            N_samples: 沿每个射线的采样点数
 
         Returns:
             rgb: (B, 3) tensor, rgb values.
@@ -443,6 +452,11 @@ class HexPlane_Base(torch.nn.Module):
             z_vals: (B, N_samples) tensor, z values.
         """
         # Prepare rays.
+
+        # 提取相机的视线方向，并在该射线中采样点
+        # 计算相邻采样点之间的深度距离（用于后续计算不透明度和颜色）
+
+
         viewdirs = rays_chunk[:, 3:6]
         xyz_sampled, z_vals, ray_valid = self.sample_rays(
             rays_chunk[:, :3], viewdirs, is_train=is_train, N_samples=N_samples

@@ -31,7 +31,7 @@ Please change the "datadir" in config based on the locations of downloaded datas
 
 # Reconstruction
 ```
-python main.py config=dnerf_slim.yaml
+python main.py config=config/dnerf_slim.yaml
 ```
 We provide several config files under [config](./config/) folder for different datasets and models.
 
@@ -56,7 +56,7 @@ With `render_test=True`, `render_path=True`, results at test viewpoint are autom
 
 Or
 ```
-python main.py config=dnerf_slim.yaml systems.ckpt="checkpoint/path" render_only=True
+python main.py config=config/dnerf_slim.yaml systems.ckpt="checkpoint/path" render_only=True
 ```
 
 

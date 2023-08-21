@@ -15,6 +15,7 @@ def init_model(cfg, aabb, near_far, device):
         # Aligned upsampling: N_t = 2 * N_t-1 - 1. Like: |--|--| ->upsampling -> |-|-|-|-|, where | represents sampling points and - represents distance.
         # Unaligned upsampling: We use linear_interpolation to get the new sampling points without considering the above rule.
         if cfg.model.upsampling_type == "aligned":
+            # 这个运算保证了reso_cur列表中的每一个元素都会变为最接近原值的奇数
             reso_cur = [reso_cur[i] // 2 * 2 + 1 for i in range(len(reso_cur))]
         model = eval(cfg.model.model_name)(
             aabb, reso_cur, device, cfg.model.time_grid_init, near_far, **cfg.model

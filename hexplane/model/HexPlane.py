@@ -16,6 +16,8 @@ class HexPlane(HexPlane_Base):
         """
         Initialize the planes. density_plane is the spatial plane while density_line_time is the spatial-temporal plane.
         """
+        # self.density_plane中的每个元素都是一个四维张量，用于表示一个特定的空间平面。
+        # 根据组件的数量和体素网格大小确定
         self.density_plane, self.density_line_time = self.init_one_hexplane(
             self.density_n_comp, self.gridSize, device
         )
@@ -31,6 +33,9 @@ class HexPlane(HexPlane_Base):
 
         # We use density_basis_mat and app_basis_mat to project extracted features from HexPlane to density_dim/app_dim.
         # density_basis_mat and app_basis_mat are linear layers, whose input dims are calculated based on the fusion methods.
+        
+        # 使用density_basis_mat和app_basis_mat将从HexPlane提取的特征投影到density_dim/app_dim。
+        # density_basis_mat和app_basis_mat是线性层，其输入维度基于融合方法进行计算。
         if self.fusion_two == "concat":
             if self.fusion_one == "concat":
                 self.density_basis_mat = torch.nn.Linear(
@@ -55,12 +60,15 @@ class HexPlane(HexPlane_Base):
             ).to(device)
 
         # Initialize the basis matrices
+        # 初始化为 1 / density_dim，固定值
         with torch.no_grad():
             weights = torch.ones_like(self.density_basis_mat.weight) / float(
                 self.density_dim
             )
             self.density_basis_mat.weight.copy_(weights)
 
+    # 平面的初始化
+    # 【n_component是一个初始化为8的整数或数组】每一个密度相关的空间或时空平面都有8个分量（8个组件）
     def init_one_hexplane(self, n_component, gridSize, device):
         plane_coef, line_time_coef = [], []
 
@@ -68,6 +76,8 @@ class HexPlane(HexPlane_Base):
             vec_id = self.vecMode[i]
             mat_id_0, mat_id_1 = self.matMode[i]
 
+            # 平面/时间系数 随机初始化：正态分布+扰动
+            # plane_coef 结构是（1, n_component[i], gridSize[mat_id_1] 空间网格索引, gridSize[mat_id_0]）4维
             plane_coef.append(
                 torch.nn.Parameter(
                     self.init_scale
@@ -77,6 +87,7 @@ class HexPlane(HexPlane_Base):
                     + self.init_shift
                 )
             )
+            # line_time_coef结构是（1, n_component[i], gridSize[vec_id] 时间网格索引, self.time_grid 时间网格索引）
             line_time_coef.append(
                 torch.nn.Parameter(
                     self.init_scale
@@ -188,13 +199,16 @@ class HexPlane(HexPlane_Base):
         plane_feat, line_time_feat = [], []
         # Extract features from six feature planes.
         for idx_plane in range(len(self.density_plane)):
-            # Spatial Plane Feature: Grid sampling on density plane[idx_plane] given coordinates plane_coord[idx_plane].
+            # 使用PyTorch的grid_sample函数，在给定的坐标（plane_coord[[idx_plane]]）上对密度平面进行网格采样。
+            # align_corners参数用于指定网格采样中坐标的对齐方式。
+            # 最后，通过view方法改变张量形状以匹配xyz_sampled的形状。
+            # 这一步是空间平面特征的提取。
             plane_feat.append(
                 F.grid_sample(
-                    self.density_plane[idx_plane],
-                    plane_coord[[idx_plane]],
-                    align_corners=self.align_corners,
-                ).view(-1, *xyz_sampled.shape[:1])
+                    self.density_plane[idx_plane],  # 要进行网格采样的密度平面
+                    plane_coord[[idx_plane]],  # 对应于该密度平面的坐标
+                    align_corners=self.align_corners,  # 坐标对齐参数
+                ).view(-1, *xyz_sampled.shape[:1])  # 改变张量形状
             )
             # Spatial-Temoral Feature: Grid sampling on density line_time[idx_plane] plane given coordinates line_time_coord[idx_plane].
             line_time_feat.append(
@@ -204,11 +218,13 @@ class HexPlane(HexPlane_Base):
                     align_corners=self.align_corners,
                 ).view(-1, *xyz_sampled.shape[:1])
             )
+            #
+        # 直接堆叠特征
         plane_feat, line_time_feat = torch.stack(plane_feat, dim=0), torch.stack(
             line_time_feat, dim=0
         )
 
-        # Fusion One
+        # Fusion One 第一次融合 融合时空特征
         if self.fusion_one == "multiply":
             inter = plane_feat * line_time_feat
         elif self.fusion_one == "sum":
@@ -218,7 +234,7 @@ class HexPlane(HexPlane_Base):
         else:
             raise NotImplementedError("no such fusion type")
 
-        # Fusion Two
+        # Fusion Two 第二次融合
         if self.fusion_two == "multiply":
             inter = torch.prod(inter, dim=0)
         elif self.fusion_two == "sum":
@@ -228,10 +244,13 @@ class HexPlane(HexPlane_Base):
         else:
             raise NotImplementedError("no such fusion type")
 
+
+        #特征降维
         inter = self.density_basis_mat(inter.T)  # Feature Projection
 
         return inter
 
+    # 和上面的类似，这个是计算appearance特征的
     def compute_appfeature(
         self, xyz_sampled: torch.Tensor, frame_time: torch.Tensor
     ) -> torch.Tensor:
@@ -331,6 +350,7 @@ class HexPlane(HexPlane_Base):
             )
         return total
 
+    # TV损失函数鼓励模型生成平滑的结果
     def TV_loss_app(self, reg, reg2=None):
         total = 0
         if reg2 is None:
